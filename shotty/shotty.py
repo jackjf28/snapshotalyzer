@@ -90,10 +90,16 @@ def create_snapshots(project):
     instances = filter_instances(project)
 
     for i in instances:
+        print("Stopping {}...".format(i.id))
+        i.stop()
+        i.wait_until_stopped()
         for v in i.volumes.all():
             print("Creating snapshot of {}".format(v.id))
             v.create_snapshot(Description="Created by SnapshotAlyzer")
-
+        print("Starting {}...".format(i.id))
+        i.start()
+        i.wait_until_running()
+    print("Job's done!")
     return
 
 @instances.command('list')
@@ -118,6 +124,7 @@ def list_instances(project):
         )))
     return
 
+# VERY dangerous command if using a public AWS account
 @instances.command('stop')
 @click.option('--project', default=None,
     help='Only instances for project')
