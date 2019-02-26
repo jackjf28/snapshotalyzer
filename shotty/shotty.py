@@ -1,4 +1,5 @@
 import boto3
+import botocore
 import click
 
 session = boto3.Session(profile_name='tr-corporate-sandbox')
@@ -134,7 +135,12 @@ def stop_instances(project):
 
     for i in instances:
         print("Stopping {}...".format(i.id))
-        i.stop()
+        try:
+            i.stop()
+        except botocore.exceptions.ClientError as e:
+            print(" Could not stop {}.".format(i.id) + str(e))
+            continue
+
     return
 
 @instances.command('start')
@@ -146,7 +152,11 @@ def stop_instances(project):
 
     for i in instances:
         print("Starting {}...".format(i.id))
-        i.start()
+        try:
+            i.start()
+        except botocore.exceptions.ClientError as e:
+            print(" Could not start {}. ".format(i.id) + str(e))
+            continue
     return
 
 if __name__ == '__main__':
