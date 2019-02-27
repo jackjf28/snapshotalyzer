@@ -4,6 +4,7 @@ import click
 
 session = boto3.Session(profile_name='tr-corporate-sandbox')
 ec2 = session.resource('ec2')
+iam = session.resource('iam')
 
 def filter_instances(project):
     instances=[]
@@ -25,6 +26,12 @@ def cli():
     '''
     Shotty manages snapshots
     '''
+@cli.command()
+@click.option('--prof', default=None,
+    help="Specifies a profile for the process.")
+def get_profile(profile):
+    print(iam.get_user())
+    return
 
 @cli.group('snapshots')
 def snapshots():
@@ -89,12 +96,44 @@ def instances():
     Commands for instances
     '''
 
+@instances.command('reboot',
+    help="Reboot some instances")
+@click.option('--project', default=None,
+    help="Only instances for project (tag Name:<name>)")
+@click.option('--force', default=False, is_flag=True,
+    help="Required flag if --project is not specified.")
+def reboot_instances(project, force):
+    # Initial safety check to make sure everything isn't rebooted
+    if project is None and not force:
+        print("ERROR: Use --force with command to reboot all instances")
+        return
+
+    instances = filter_instances(project)
+        
+    for i in instances:
+        print("Stopping {}...".format(i.id))
+        i.stop()
+        i.wait_until_stopped()
+        print("Restarting {}...".format(i.id))
+        i.start()
+        i.wait_until_running()
+    print("No project specified.")
+    return
+
+
 @instances.command('snapshot',
     help="Create snapshots of all volumes")
 @click.option('--project', default=None,
     help="Only instances for project (tag Project:<name>")
-def create_snapshots(project):
-    "Create snapshots for EC2 instances"
+@click.option('--force', default=False, is_flag=True,
+    help="Required flag if --project is not specified.")
+def create_snapshots(project, force):
+    '''
+    Create snapshots for EC2 instances
+    '''
+    if project is None and not force:
+        print("ERROR: Use --force with command to create snapshots of all instances")
+        return
 
     instances = filter_instances(project)
 
@@ -117,10 +156,16 @@ def create_snapshots(project):
 @instances.command('list')
 @click.option('--project', default=None,
     help="Only instances for project (tag Project:<name>)")
-def list_instances(project):
+@click.option('--force', default=None, is_flag=True,
+    help="Required flag to run list if --project is not specified")
+def list_instances(project, force):
     '''
     List EC2 instances
     '''
+    if project is None and not force:
+        print("ERROR: Use --force flag with argument to list all instances")
+        return
+
     instances = filter_instances(project)
 
     for i in instances:
@@ -140,8 +185,14 @@ def list_instances(project):
 @instances.command('stop')
 @click.option('--project', default=None,
     help='Only instances for project')
-def stop_instances(project):
+@click.option('--force', default=False, is_flag=True,
+    help="Required flag if --project is not specified.")
+def stop_instances(project, force):
     "Stop EC2 instances"
+    if project is None and not force:
+        print("ERROR: Use --force flag with argument to stop all instances")
+        return
+
     instances = filter_instances(project) 
 
     for i in instances:
@@ -157,8 +208,14 @@ def stop_instances(project):
 @instances.command('start')
 @click.option('--project', default=None,
     help='Only instances for project')
-def stop_instances(project):
+@click.option('--force', default=False, is_flag=True,
+    help="Required flag if --project is not specified.")
+def stop_instances(project, force):
     "Start EC2 instances"
+    if project is None and not force:
+        print("ERROR: Use --force flag with argument to start all instances")
+        return
+
     instances = filter_instances(project) 
 
     for i in instances:
